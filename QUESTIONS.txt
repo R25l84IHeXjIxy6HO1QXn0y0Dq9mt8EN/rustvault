@@ -1,0 +1,2 @@
+2020-06-18:
+- Where is the AAD information stored in the deployment?
