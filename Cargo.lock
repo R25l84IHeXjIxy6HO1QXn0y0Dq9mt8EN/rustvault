@@ -576,6 +576,7 @@ dependencies = [
  "bytes",
  "hyper",
  "hyper-tls",
+ "serde",
  "serde_json",
  "tokio",
  "url",
