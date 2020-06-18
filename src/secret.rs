@@ -18,8 +18,7 @@ pub async fn get_secrets(vault: Vault<'_>) -> JSONResult<Value> {
 
     let req = vault_request_proto(vault, &resource_name)?
         .method("GET")
-        .body(Body::empty())
-        .unwrap();
+        .body(Body::empty())?;
 
     slurp_json(req)
         .await
@@ -30,8 +29,7 @@ pub async fn get_secret_versions(vault: Vault<'_>, secret_name: &str) -> JSONRes
 
     let req = vault_request_proto(vault, &resource_name)?
         .method("GET")
-        .body(Body::empty())
-        .unwrap();
+        .body(Body::empty())?;
 
     slurp_json(req)
         .await
@@ -45,8 +43,7 @@ pub async fn get_secret(vault: Vault<'_>, secret_name: &str, secret_version: &st
 
     let req = vault_request_proto(vault, &resource_name)?
         .method("GET")
-        .body(Body::empty())
-        .unwrap();
+        .body(Body::empty())?;
 
     slurp_json(req)
         .await
@@ -60,8 +57,7 @@ pub async fn set_secret(vault: Vault<'_>, secret_name: &str, secret_value: &str)
 
     let req = vault_request_proto(vault, &resource_name)?
         .method("PUT")
-        .body(Body::from(serde_json::to_string(&payload)?))
-        .unwrap();
+        .body(Body::from(serde_json::to_string(&payload)?))?;
 
     slurp_json(req)
         .await
