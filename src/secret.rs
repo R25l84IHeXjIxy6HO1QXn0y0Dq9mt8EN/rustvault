@@ -1,64 +1,128 @@
-use crate::{JSONResult, Vault};
-use crate::util::{slurp_json, vault_request_proto};
+use crate::{BoxedResult, DeletionRecoveryLevel, Vault};
+use crate::util::{slurp_error, slurp_json};
 
+use async_trait::async_trait;
 use hyper::Body;
-use serde_json::{json, Value};
+use serde::{Deserialize, Serialize};
+use serde_json::{json, to_string, Value};
 
-/*
-TODO:
-- backup_secret
-- purge_deleted_secret
-- recover_deleted_secret
-- restore_secret
-- update_secret
-*/
-
-pub async fn get_secrets(vault: Vault<'_>) -> JSONResult<Value> {
-    let resource_name = "/secrets";
-
-    let req = vault_request_proto(vault, &resource_name)?
-        .method("GET")
-        .body(Body::empty())?;
-
-    slurp_json(req)
-        .await
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Attributes {
+    created: u64,
+    enabled: bool,
+    exp: u64,
+    nbf: u64,
+    recovery_level: DeletionRecoveryLevel,
+    updated: u64
 }
 
-pub async fn get_secret_versions(vault: Vault<'_>, secret_name: &str) -> JSONResult<Value> {
-    let resource_name = format!("/secrets/{}", secret_name);
-
-    let req = vault_request_proto(vault, &resource_name)?
-        .method("GET")
-        .body(Body::empty())?;
-
-    slurp_json(req)
-        .await
+#[async_trait]
+pub trait SecretVault<'a> {
+    async fn backup(&self, name: &str) -> BoxedResult<Value>;
+    async fn list(&self) -> BoxedResult<Value>;
+    async fn get_versions(&self, name: &str) -> BoxedResult<Value>;
+    async fn get(&self, name: &str, version: &str) -> BoxedResult<Value>;
+    async fn purge(&self, name: &str) -> BoxedResult<()>;
+    async fn recover(&self, name: &str) -> BoxedResult<Value>;
+    async fn restore(&self, value: &str) -> BoxedResult<Value>;
+    async fn set(&self, name: &str, value: &str) -> BoxedResult<Value>;
+    async fn update(&self, name: &str, version: &str, attrs: Value) -> BoxedResult<Value>;
 }
 
-pub async fn get_secret(vault: Vault<'_>, secret_name: &str, secret_version: &str) -> JSONResult<Value> {
-    let resource_name = format!(
-        "/secrets/{}/version/{}",
-        secret_name, secret_version
-    );
+#[async_trait]
+impl<'a> SecretVault<'a> for Vault<'a> {
+    async fn backup(&self, name: &str) -> BoxedResult<Value> {
+        let resource_name = format!("/secrets/{}/backup", name);
 
-    let req = vault_request_proto(vault, &resource_name)?
-        .method("GET")
-        .body(Body::empty())?;
+        let req = self.proto(&resource_name)?
+            .method("POST")
+            .body(Body::empty())?;
+            
+        slurp_json(req)
+            .await
+    }
 
-    slurp_json(req)
-        .await
-}
+    async fn list(&self) -> BoxedResult<Value> {
+        let resource_name = "/secrets";
 
-pub async fn set_secret(vault: Vault<'_>, secret_name: &str, secret_value: &str) -> JSONResult<Value> {
-    let resource_name = format!("/secrets/{}", secret_name);
-    let payload = json!({
-        "value": secret_value
-    });
+        let req = self.proto(&resource_name)?
+            .method("GET")
+            .body(Body::empty())?;
 
-    let req = vault_request_proto(vault, &resource_name)?
-        .method("PUT")
-        .body(Body::from(serde_json::to_string(&payload)?))?;
+        slurp_json(req)
+            .await
+    }
 
-    slurp_json(req)
-        .await
+    async fn get_versions(&self, name: &str) -> BoxedResult<Value> {
+        let resource_name = format!("/secrets/{}", name);
+
+        let req = self.proto(&resource_name)?
+            .method("GET")
+            .body(Body::empty())?;
+
+        slurp_json(req)
+            .await
+    }
+
+    async fn get(&self, name: &str, version: &str) -> BoxedResult<Value> {
+        let resource_name = format!("/secrets/{}/version/{}", name, version);
+
+        let req = self.proto(&resource_name)?
+            .method("GET")
+            .body(Body::empty())?;
+
+        slurp_json(req)
+            .await
+    }
+
+    async fn purge(&self, name: &str) -> BoxedResult<()> {
+        let resource_name = format!("/deletedsecrets/{}", name);
+
+        let req = self.proto(&resource_name)?
+            .method("DELETE")
+            .body(Body::empty())?;
+
+        slurp_error(req)
+            .await
+    }
+
+    async fn recover(&self, name: &str) -> BoxedResult<Value> {
+        let resource_name = format!("/secrets/deletedsecrets/{}/recover", name);
+
+        let req = self.proto(&resource_name)?
+            .method("POST")
+            .body(Body::empty())?;
+
+        slurp_json(req)
+            .await
+    }
+
+    async fn restore(&self, value: &str) -> BoxedResult<Value> {
+        let resource_name = format!("/secrets/restore");
+        let payload = json!({
+            "value": value
+        });
+
+        let req = self.proto(&resource_name)?
+            .method("GET")
+            .body(Body::from(to_string(&payload)?))?;
+
+        slurp_json(req)
+            .await
+    }
+
+    async fn set(&self, name: &str, value: &str) -> BoxedResult<Value> {
+        let resource_name = format!("/secrets/{}", name);
+        let payload = json!({
+            "value": value
+        });
+
+        let req = self.proto(&resource_name)?
+            .method("PUT")
+            .body(Body::from(serde_json::to_string(&payload)?))?;
+
+        slurp_json(req)
+            .await
+    }
 }
