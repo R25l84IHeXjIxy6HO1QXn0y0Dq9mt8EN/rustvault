@@ -128,8 +128,8 @@ impl<'a> SecretVault<'a> for Vault<'a> {
             .await
     }
 
-    async fn update(&self, name: &str, value: &str, attrs: Option<Attributes>, content_type: Option<&str>, tags: Option<Value>) -> BoxedResult<Value> {
-        let resource_name = format!("/secrets/{}/{}/");
+    async fn update(&self, name: &str, version: &str, attrs: Option<Attributes>, content_type: Option<&str>, tags: Option<Value>) -> BoxedResult<Value> {
+        let resource_name = format!("/secrets/{}/{}", name, version);
         let payload = json!({
             "attributes": attrs,
             "contentType": content_type,
