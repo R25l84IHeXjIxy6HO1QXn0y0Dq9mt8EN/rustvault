@@ -1,13 +1,13 @@
 use crate::{BoxedResult, DeletionRecoveryLevel, Vault};
 use crate::util::{slurp_error, slurp_json};
 
-use anyof_struct::anyof;
+use map_item::map;
 use async_trait::async_trait;
 use hyper::Body;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, to_string, Value};
 
-#[anyof(compact)]
+#[map(Option, #[serde(skip_serializing_if = "Option::is_none")])]
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Attributes {

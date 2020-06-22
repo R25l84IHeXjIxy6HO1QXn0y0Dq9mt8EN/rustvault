@@ -7,7 +7,7 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyof_struct = { git = "https://github.com/R25l84IHeXjIxy6HO1QXn0y0Dq9mt8EN/anyof_struct.git", rev = "37a935aa7d5565508cd2050fa220eb6fb02a6a00" }
+map_item = { path = "../map_item" }
 async-trait = "0.1"
 bytes = "0.5"
 hyper = "0.13"
