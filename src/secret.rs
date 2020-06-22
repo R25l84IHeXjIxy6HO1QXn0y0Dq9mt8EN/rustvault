@@ -1,11 +1,13 @@
 use crate::{BoxedResult, DeletionRecoveryLevel, Vault};
 use crate::util::{slurp_error, slurp_json};
 
+use anyof_struct::anyof;
 use async_trait::async_trait;
 use hyper::Body;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, to_string, Value};
 
+#[anyof(compact)]
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Attributes {
@@ -27,7 +29,7 @@ pub trait SecretVault<'a> {
     async fn recover(&self, name: &str) -> BoxedResult<Value>;
     async fn restore(&self, value: &str) -> BoxedResult<Value>;
     async fn set(&self, name: &str, value: &str) -> BoxedResult<Value>;
-    async fn update(&self, name: &str, version: &str, attrs: Value) -> BoxedResult<Value>;
+    async fn update(&self, name: &str, version: &str, attrs: Option<Attributes>, content_type: Option<&str>, tags: Option<Value>) -> BoxedResult<Value>;
 }
 
 #[async_trait]
@@ -66,7 +68,7 @@ impl<'a> SecretVault<'a> for Vault<'a> {
     }
 
     async fn get(&self, name: &str, version: &str) -> BoxedResult<Value> {
-        let resource_name = format!("/secrets/{}/version/{}", name, version);
+        let resource_name = format!("/secrets/{}/{}", name, version);
 
         let req = self.proto(&resource_name)?
             .method("GET")
@@ -120,6 +122,22 @@ impl<'a> SecretVault<'a> for Vault<'a> {
 
         let req = self.proto(&resource_name)?
             .method("PUT")
+            .body(Body::from(serde_json::to_string(&payload)?))?;
+
+        slurp_json(req)
+            .await
+    }
+
+    async fn update(&self, name: &str, value: &str, attrs: Option<Attributes>, content_type: Option<&str>, tags: Option<Value>) -> BoxedResult<Value> {
+        let resource_name = format!("/secrets/{}/{}/");
+        let payload = json!({
+            "attributes": attrs,
+            "contentType": content_type,
+            "tags": tags
+        });
+
+        let req = self.proto(&resource_name)?
+            .method("PATCH")
             .body(Body::from(serde_json::to_string(&payload)?))?;
 
         slurp_json(req)
