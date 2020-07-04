@@ -1,31 +1,21 @@
-use crate::{BoxedResult, Vault, VaultError};
-use crate::constants;
+use crate::{BoxedResult, VaultError};
 
 use bytes::buf::BufExt;
-use hyper::{Body, Client, Request, Uri};
+use hyper::{Body, Client, Request};
 use hyper::body::aggregate;
-use hyper::client::HttpConnector;
-use hyper::http::request::Builder;
-use hyper::http::uri::InvalidUri;
 use hyper_tls::HttpsConnector;
+use percent_encoding::{NON_ALPHANUMERIC, utf8_percent_encode};
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 
-pub fn https_client() -> Client<HttpsConnector<HttpConnector>> {
-    Client::builder()
-        .build(HttpsConnector::new())
-}
-
-pub fn vault_request_proto(v: Vault, resource_name: &str) ->  Result<Builder, InvalidUri> {
-    let uri: Uri = format!("{}{}?{}", v, resource_name, constants::API_VERSION)
-        .parse()?;
-    Ok(Request::builder()
-        .uri(uri)
-        .header("Authorization", format!("Bearer {}", v.token)))
+#[inline]
+pub fn encode_parameter(param: &str) -> String {
+    utf8_percent_encode(param, NON_ALPHANUMERIC).to_string()
 }
 
 pub async fn slurp_json<T: DeserializeOwned>(req: Request<Body>) -> BoxedResult<T> {
-    let client = https_client();
+    let client = Client::builder()
+        .build(HttpsConnector::new());
     let res = client.request(req)
         .await?;
 
